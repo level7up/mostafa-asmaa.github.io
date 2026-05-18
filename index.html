@@ -594,6 +594,20 @@
       animation: fadeSlideUp 0.8s ease-out forwards;
     }
 
+    /* ===== SOUNDCLOUD PLAYER (hidden but present for iOS) ===== */
+    #scWidget {
+      position: fixed;
+      bottom: 0;
+      right: 0;
+      width: 10px;
+      height: 10px;
+      border: none;
+      opacity: 0.01;
+      pointer-events: none;
+      z-index: 1;
+      background: transparent;
+    }
+
     /* ===== MUSIC TOGGLE ===== */
     .music-toggle {
       position: fixed;
@@ -675,6 +689,7 @@
       .countdown__number { font-size: 1.4rem; }
       .corner { width: 28px; height: 28px; }
       .music-toggle { bottom: 20px; right: 20px; width: 44px; height: 44px; }
+
       .lang-options { flex-direction: column; align-items: center; }
       .lang-btn { max-width: 260px; }
       .lang-modal__title { font-size: 1.8rem; }
@@ -822,6 +837,13 @@
     </div>
   </main>
 
+  <!-- SoundCloud mini-player -->
+  <iframe id="scWidget"
+    src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/massaregbariofficial/ana-haweit&auto_play=false&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_artwork=false&visual=false&liking=false&sharing=false&download=false&show_playcount=false"
+    allow="autoplay"
+    title="SoundCloud player">
+  </iframe>
+
   <!-- Music toggle -->
   <button class="music-toggle" id="musicToggle" aria-label="Toggle music">
     <svg class="icon-music" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -831,16 +853,19 @@
     </svg>
   </button>
 
+  <script src="https://w.soundcloud.com/player/api.js"></script>
+
   <script>
     (function() {
       var WEDDING_DATE = new Date('2026-07-18T19:00:00').getTime();
-      var playerEl = null;
       var widget = null;
+      var widgetReady = false;
       var isPlaying = false;
 
       var overlay = document.getElementById('langOverlay');
       var invitation = document.getElementById('invitation');
       var musicToggle = document.getElementById('musicToggle');
+      var scIframe = document.getElementById('scWidget');
 
       // ===== COUNTDOWN =====
       function updateCountdown() {
@@ -853,69 +878,51 @@
       updateCountdown();
       setInterval(updateCountdown, 1000);
 
-      // ===== MUSIC =====
-      function createPlayer() {
-        if (playerEl) return;
-        playerEl = document.createElement('iframe');
-        playerEl.id = 'scPlayer';
-        playerEl.src = 'https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/massaregbariofficial/ana-haweit&auto_play=true&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_artwork=false&visual=false&liking=false&sharing=false&download=false';
-        playerEl.style.cssText = 'position:absolute;width:1px;height:1px;border:none;opacity:0;pointer-events:none;overflow:hidden;';
-        playerEl.setAttribute('allow', 'autoplay');
-        document.body.appendChild(playerEl);
-        // Load Widget API
-        if (typeof SC === 'undefined') {
-          var s = document.createElement('script');
-          s.src = 'https://w.soundcloud.com/player/api.js';
-          document.body.appendChild(s);
+      // ===== SOUNDCLOUD WIDGET =====
+      function initWidget(callback) {
+        try {
+          if (typeof SC !== 'undefined' && SC.Widget) {
+            widget = SC.Widget(scIframe);
+            widget.bind(SC.Widget.Events.READY, function() {
+              widget.setVolume(30);
+              widgetReady = true;
+              if (callback) callback();
+            });
+            return;
+          }
+        } catch(e) {}
+        setTimeout(function() { initWidget(callback); }, 500);
+      }
+
+      function playMusic() {
+        if (widget && widgetReady) {
+          widget.play();
+          widget.seekTo(3000);
+          isPlaying = true;
+          musicToggle.classList.add('playing');
         }
       }
 
-      function tryWidgetPlay() {
-        if (typeof SC !== 'undefined' && SC.Widget) {
-          widget = SC.Widget('scPlayer');
-          widget.bind(SC.Widget.Events.PLAY, function() {
-            isPlaying = true;
-            musicToggle.classList.add('playing');
-          });
-          widget.bind(SC.Widget.Events.PAUSE, function() {
-            isPlaying = false;
-            musicToggle.classList.remove('playing');
-          });
-          widget.bind(SC.Widget.Events.READY, function() {
-            widget.setVolume(30);
-            widget.seekTo(1000);
-          });
+      function pauseMusic() {
+        if (widget && widgetReady) {
+          widget.pause();
+          isPlaying = false;
+          musicToggle.classList.remove('playing');
         }
       }
 
       function toggleMusic() {
-        if (typeof SC !== 'undefined' && SC.Widget && widget) {
+        if (widget && widgetReady) {
           widget.isPaused(function(paused) {
-            if (paused) {
-              widget.play();
-            } else {
-              widget.pause();
-            }
+            if (paused) playMusic();
+            else pauseMusic();
           });
-        } else {
-          if (playerEl) {
-            if (isPlaying) {
-              playerEl.src = '';
-              isPlaying = false;
-              musicToggle.classList.remove('playing');
-            } else {
-              playerEl.src = 'https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/massaregbariofficial/ana-haweit&auto_play=true&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_artwork=false&visual=false&liking=false&sharing=false&download=false';
-              isPlaying = true;
-              musicToggle.classList.add('playing');
-            }
-          }
         }
       }
 
       // ===== ENTER CELEBRATION =====
       function enterCelebration() {
         overlay.classList.add('hidden');
-
         invitation.classList.add('visible');
 
         var allEls = invitation.querySelectorAll(
@@ -925,9 +932,7 @@
           '.invitation__text, .invitation__text-ar, ' +
           '.invitation__details, .heart-accent, .countdown, .divider'
         );
-        allEls.forEach(function(el) {
-          el.classList.add('anim-fade');
-        });
+        allEls.forEach(function(el) { el.classList.add('anim-fade'); });
 
         var corners = invitation.querySelectorAll('.corner');
         corners.forEach(function(el, i) {
@@ -935,20 +940,20 @@
           el.classList.add('anim-fade');
         });
 
-        setTimeout(function() {
-          musicToggle.classList.add('visible');
-        }, 2200);
-
-        createPlayer();
+        setTimeout(function() { musicToggle.classList.add('visible'); }, 2200);
 
         setTimeout(function() {
-          tryWidgetPlay();
-        }, 2000);
+          if (widgetReady) playMusic();
+          else initWidget(playMusic);
+        }, 800);
       }
 
       // ===== EVENT LISTENERS =====
       document.getElementById('enterBtn').addEventListener('click', enterCelebration);
       musicToggle.addEventListener('click', toggleMusic);
+
+      // Pre-init widget
+      initWidget();
     })();
   </script>
 
