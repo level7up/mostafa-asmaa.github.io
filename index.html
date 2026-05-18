@@ -616,56 +616,6 @@
       animation: fadeSlideUp 0.8s ease-out forwards;
     }
 
-    /* ===== LOADING OVERLAY ===== */
-    .loading-overlay {
-      position: fixed;
-      inset: 0;
-      z-index: 300;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: rgba(10, 0, 3, 0.95);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      transition: opacity 0.8s ease;
-    }
-
-    .loading-overlay.hidden {
-      opacity: 0;
-      pointer-events: none;
-    }
-
-    .loading-content {
-      text-align: center;
-    }
-
-    .loading-spinner {
-      width: 50px;
-      height: 50px;
-      border: 2px solid rgba(200, 150, 62, 0.15);
-      border-top-color: var(--gold);
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin: 0 auto 20px;
-    }
-
-    .loading-text {
-      font-family: 'Cormorant Garamond', serif;
-      font-style: italic;
-      font-weight: 300;
-      color: var(--gold);
-      font-size: 1rem;
-      letter-spacing: 2px;
-    }
-
-    .loading-text-ar {
-      font-family: 'El Messiri', sans-serif;
-      font-weight: 400;
-      color: rgba(200, 150, 62, 0.7);
-      font-size: 0.9rem;
-      margin-top: 6px;
-    }
-
     /* ===== MUSIC TOGGLE ===== */
     .music-toggle {
       position: fixed;
@@ -787,17 +737,8 @@
     <div class="petal petal-15"></div>
   </div>
 
-  <!-- ===== LOADING OVERLAY ===== -->
-  <div class="loading-overlay" id="loadingOverlay">
-    <div class="loading-content">
-      <div class="loading-spinner"></div>
-      <div class="loading-text">Loading blessing...</div>
-      <div class="loading-text-ar">جاري التحميل...</div>
-    </div>
-  </div>
-
   <!-- ===== BLESSING MODAL ===== -->
-  <div class="lang-overlay hidden" id="langOverlay">
+  <div class="lang-overlay" id="langOverlay">
     <div class="lang-modal">
       <div class="lang-modal__corners"></div>
 
@@ -923,7 +864,6 @@
     (function() {
       var WEDDING_DATE = new Date('2026-07-18T19:00:00').getTime();
       var audio = document.getElementById('bgMusic');
-      var audioReady = false;
 
       var overlay = document.getElementById('langOverlay');
       var invitation = document.getElementById('invitation');
@@ -941,19 +881,12 @@
       setInterval(updateCountdown, 1000);
 
       // ===== AUDIO =====
-      audio.addEventListener('canplaythrough', function() {
-        audioReady = true;
-        audio.volume = 0.3;
-        document.getElementById('loadingOverlay').classList.add('hidden');
-        overlay.classList.remove('hidden');
-      }, { once: true });
+      audio.volume = 0.3;
 
       function playMusic() {
-        if (audioReady) {
-          audio.currentTime = 3;
-          audio.play().catch(function() {});
-          musicToggle.classList.add('playing');
-        }
+        audio.currentTime = 3;
+        audio.play().catch(function() {});
+        musicToggle.classList.add('playing');
       }
 
       function pauseMusic() {
@@ -994,14 +927,7 @@
       document.getElementById('enterBtn').addEventListener('click', enterCelebration);
       musicToggle.addEventListener('click', toggleMusic);
 
-      // Fallback: if audio never loads, show the page anyway after 10 seconds
-      setTimeout(function() {
-        var loading = document.getElementById('loadingOverlay');
-        if (loading && !loading.classList.contains('hidden')) {
-          loading.classList.add('hidden');
-          overlay.classList.remove('hidden');
-        }
-      }, 10000);
+
 
     })();
   </script>
