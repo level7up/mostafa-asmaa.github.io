@@ -4,6 +4,28 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Mostafa & Asmaa - Wedding Invitation</title>
+
+  <meta name="description" content="Join us in celebrating the wedding of Mostafa & Asmaa — 18 July 2026, Palm Village, Quweisna">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Mostafa & Asmaa — Wedding Invitation">
+  <meta property="og:description" content="Join us in celebrating the wedding of Mostafa & Asmaa — 18 July 2026, Palm Village, Quweisna">
+  <meta property="og:image" content="og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:url" content="">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:locale:alternate" content="ar_EG">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Mostafa & Asmaa — Wedding Invitation">
+  <meta name="twitter:description" content="Join us in celebrating the wedding of Mostafa & Asmaa — 18 July 2026, Palm Village, Quweisna">
+  <meta name="twitter:image" content="og-image.png">
+
+  <!-- WhatsApp / iMessage fallback -->
+  <link rel="apple-touch-icon" href="og-image.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Great+Vibes&family=Aref+Ruqaa:wght@400;700&family=El+Messiri:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -594,18 +616,54 @@
       animation: fadeSlideUp 0.8s ease-out forwards;
     }
 
-    /* ===== SOUNDCLOUD PLAYER (hidden but present for iOS) ===== */
-    #scWidget {
+    /* ===== LOADING OVERLAY ===== */
+    .loading-overlay {
       position: fixed;
-      bottom: 0;
-      right: 0;
-      width: 10px;
-      height: 10px;
-      border: none;
-      opacity: 0.01;
+      inset: 0;
+      z-index: 300;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(10, 0, 3, 0.95);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      transition: opacity 0.8s ease;
+    }
+
+    .loading-overlay.hidden {
+      opacity: 0;
       pointer-events: none;
-      z-index: 1;
-      background: transparent;
+    }
+
+    .loading-content {
+      text-align: center;
+    }
+
+    .loading-spinner {
+      width: 50px;
+      height: 50px;
+      border: 2px solid rgba(200, 150, 62, 0.15);
+      border-top-color: var(--gold);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 20px;
+    }
+
+    .loading-text {
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic;
+      font-weight: 300;
+      color: var(--gold);
+      font-size: 1rem;
+      letter-spacing: 2px;
+    }
+
+    .loading-text-ar {
+      font-family: 'El Messiri', sans-serif;
+      font-weight: 400;
+      color: rgba(200, 150, 62, 0.7);
+      font-size: 0.9rem;
+      margin-top: 6px;
     }
 
     /* ===== MUSIC TOGGLE ===== */
@@ -729,8 +787,17 @@
     <div class="petal petal-15"></div>
   </div>
 
+  <!-- ===== LOADING OVERLAY ===== -->
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-content">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">Loading blessing...</div>
+      <div class="loading-text-ar">جاري التحميل...</div>
+    </div>
+  </div>
+
   <!-- ===== BLESSING MODAL ===== -->
-  <div class="lang-overlay" id="langOverlay">
+  <div class="lang-overlay hidden" id="langOverlay">
     <div class="lang-modal">
       <div class="lang-modal__corners"></div>
 
@@ -837,12 +904,9 @@
     </div>
   </main>
 
-  <!-- SoundCloud mini-player -->
-  <iframe id="scWidget"
-    src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/massaregbariofficial/ana-haweit&auto_play=false&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_artwork=false&visual=false&liking=false&sharing=false&download=false&show_playcount=false"
-    allow="autoplay"
-    title="SoundCloud player">
-  </iframe>
+  <audio id="bgMusic" preload="auto" style="display:none">
+    <source src="media/song2.mp3" type="audio/mpeg">
+  </audio>
 
   <!-- Music toggle -->
   <button class="music-toggle" id="musicToggle" aria-label="Toggle music">
@@ -853,19 +917,17 @@
     </svg>
   </button>
 
-  <script src="https://w.soundcloud.com/player/api.js"></script>
+
 
   <script>
     (function() {
       var WEDDING_DATE = new Date('2026-07-18T19:00:00').getTime();
-      var widget = null;
-      var widgetReady = false;
-      var isPlaying = false;
+      var audio = document.getElementById('bgMusic');
+      var audioReady = false;
 
       var overlay = document.getElementById('langOverlay');
       var invitation = document.getElementById('invitation');
       var musicToggle = document.getElementById('musicToggle');
-      var scIframe = document.getElementById('scWidget');
 
       // ===== COUNTDOWN =====
       function updateCountdown() {
@@ -878,46 +940,30 @@
       updateCountdown();
       setInterval(updateCountdown, 1000);
 
-      // ===== SOUNDCLOUD WIDGET =====
-      function initWidget(callback) {
-        try {
-          if (typeof SC !== 'undefined' && SC.Widget) {
-            widget = SC.Widget(scIframe);
-            widget.bind(SC.Widget.Events.READY, function() {
-              widget.setVolume(30);
-              widgetReady = true;
-              if (callback) callback();
-            });
-            return;
-          }
-        } catch(e) {}
-        setTimeout(function() { initWidget(callback); }, 500);
-      }
+      // ===== AUDIO =====
+      audio.addEventListener('canplaythrough', function() {
+        audioReady = true;
+        audio.volume = 0.3;
+        document.getElementById('loadingOverlay').classList.add('hidden');
+        overlay.classList.remove('hidden');
+      }, { once: true });
 
       function playMusic() {
-        if (widget && widgetReady) {
-          widget.play();
-          widget.seekTo(3000);
-          isPlaying = true;
+        if (audioReady) {
+          audio.currentTime = 3;
+          audio.play().catch(function() {});
           musicToggle.classList.add('playing');
         }
       }
 
       function pauseMusic() {
-        if (widget && widgetReady) {
-          widget.pause();
-          isPlaying = false;
-          musicToggle.classList.remove('playing');
-        }
+        audio.pause();
+        musicToggle.classList.remove('playing');
       }
 
       function toggleMusic() {
-        if (widget && widgetReady) {
-          widget.isPaused(function(paused) {
-            if (paused) playMusic();
-            else pauseMusic();
-          });
-        }
+        if (audio.paused) playMusic();
+        else pauseMusic();
       }
 
       // ===== ENTER CELEBRATION =====
@@ -942,18 +988,22 @@
 
         setTimeout(function() { musicToggle.classList.add('visible'); }, 2200);
 
-        setTimeout(function() {
-          if (widgetReady) playMusic();
-          else initWidget(playMusic);
-        }, 800);
+        setTimeout(function() { playMusic(); }, 800);
       }
 
       // ===== EVENT LISTENERS =====
       document.getElementById('enterBtn').addEventListener('click', enterCelebration);
       musicToggle.addEventListener('click', toggleMusic);
 
-      // Pre-init widget
-      initWidget();
+      // Fallback: if audio never loads, show the page anyway after 10 seconds
+      setTimeout(function() {
+        var loading = document.getElementById('loadingOverlay');
+        if (loading && !loading.classList.contains('hidden')) {
+          loading.classList.add('hidden');
+          overlay.classList.remove('hidden');
+        }
+      }, 10000);
+
     })();
   </script>
 
